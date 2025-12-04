@@ -17,13 +17,61 @@ This package implements a feature to crop a polygon directly from the SR image, 
     ```
 
 ## Usage in Python
+
 ### Get a SR image
 
-TODO
+It runs the full workflow, from date and location data to super resolved image. Default `size` is 128 px, and it must be a multiple of 32. Default `bands` are Near-Infrared, Red, Blue, Green and the Scene Classification Layer, that contains cloud density information among others. Cropping a polygon from the image is optional, provided the GeoJSON filepath.
 
+```python
+from sen2sr_tools.get_sr_image import get_sr_image
+
+lat = 37.265840
+lng = -4.593406 
+start_date = "2025-11-1"
+end_date = "2025-11-15"
+# bands = ["B08", "B02", "B03", "B04", "SCL"]       # Default bands
+# size = 128                                        # Default size
+# geojson_path = None                               # Default value
+
+sr_filepath = get_sr_image(lat, lng, bands, start_date, end_date)
+
+print(f"SR image successfully downloaded and saved at: {sr_filepath}")
+```
+### Download CUBO
+
+It serves the requested bands' data directly. It uses the date range to get cloudless (<=1%) images. The `crs` can be provided (i.e, "EPSG:32630"), but it can also be automatically calculated from the `lat` and `lon` arguments. If no requested data was found within the date range, it retries with by expanding it backwards in time.
+
+```python
+from sen2sr_tools.get_sr_image import download_sentinel_cubo
+
+lat = 37.265840
+lng = -4.593406 
+start_date = "2025-11-1"
+end_date = "2025-11-15"
+# crs = None                                   # Default CRS
+# bands = ["B08", "B02", "B03", "B04", "SCL"]  # Default bands
+# size = 128                                   # Default size
+# cloud_threshold= 0.01                        # Default threshold density
+# max_retries = 3                              # Default retries
+# retry_days_shift = 15                        # Default shift
+
+cloudless_image_data_array, sample_date = download_sentinel_cubo(lat, lon, start_date, end_date):
+```
 ### Crop parcel from image
 
+It crops the polygon from the given TIF file and returns the cropped image as PNG.
 
+```python
+from sen2sr_tools.get_sr_image import crop_png_from_tif
+
+raster_path = "path/to/file.tif"
+geojson_path = "path/to/polygon.geojson"
+date = "2025-11-1"
+
+out_png_path = crop_png_from_tif(raster_path, geojson_path, date)
+
+print(f"Polygon successfully cropped and saved at: {out_png_path}")
+```
 
 ## Attribution and License
 We appreciate the work done by the [ESAOpenSR](https://opensr.eu/) team in upscaling and super-resolving satellite imagery and making SR models accessible through Open Source code. This module is built upon the core model and concepts of the `sen2sr` Python package.
