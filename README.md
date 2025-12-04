@@ -53,7 +53,7 @@ end_date = "2025-11-15"
 # size = 128                                   # Default size
 # cloud_threshold= 0.01                        # Default threshold density
 # max_retries = 3                              # Default retries
-# retry_days_shift: int = 15                   # Default shift
+# retry_days_shift = 15                        # Default shift
 
 cloudless_image_data_array, sample_date = download_sentinel_cubo(lat, lon, start_date, end_date):
 ```
