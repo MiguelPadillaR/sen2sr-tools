@@ -6,7 +6,7 @@ RESOLUTION = 10
 CURR_SCRIPT_DIR = Path.Path(os.path.dirname(os.path.abspath(__file__)))
 
 MODEL_DIR = str(CURR_SCRIPT_DIR / "model")
-SEN2SR_SR_DIR = str(CURR_SCRIPT_DIR / "sen2sr_out")
+SEN2SR_SR_DIR = CURR_SCRIPT_DIR / "sen2sr_out"
 PNG_DIR = SEN2SR_SR_DIR / "png"
 TIF_DIR = SEN2SR_SR_DIR / "tif"
 

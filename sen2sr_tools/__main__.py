@@ -15,8 +15,7 @@ def run_command(command_name: str, args: argparse.Namespace):
         from sen2sr_tools.get_sr_image import (
             get_sr_image,
             download_sentinel_cubo,
-            apply_sen2sr,
-            crop_parcel_from_sr_tif,
+            crop_png_from_tif,
         )
     except ImportError:
         logger.error(f"Could not import logic from sen2sr_tools.get_sr_image. Ensure the package is installed in editable mode.")
@@ -64,7 +63,7 @@ def run_command(command_name: str, args: argparse.Namespace):
         if not args.acquisition_date:
              raise ValueError("The --acquisition-date argument is required for file naming.")
              
-        out_path = crop_parcel_from_sr_tif(
+        out_path = crop_png_from_tif(
             raster_path=args.raster_path, 
             date=args.acquisition_date
         )

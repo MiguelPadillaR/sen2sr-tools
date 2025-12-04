@@ -1,6 +1,7 @@
 import time
 import cubo
 import json
+import matplotlib  # needed for SEN2SR model upscaling
 import mlstac
 import rasterio
 import rioxarray  # needed to access .rio on xarray objects
@@ -19,17 +20,17 @@ from .utils import lonlat_to_utm_epsg, save_to_png, save_to_tif, get_cloudless_t
 logger = structlog.get_logger()
 
 
-def get_sr_image(lat: float, lon: float, bands: list, start_date: str, end_date: str, size: int, geojson_path: str):
+def get_sr_image(lat: float, lon: float, start_date: str, end_date: str, bands: list=["B08", "B02", "B03", "B04", "SCL"], size: int=128, geojson_path: str=None):
     """
     Get SR image from downloaded Sentinel's imagery data and load up SEN2SR model from HuggingFace to Super-Resolve it
     Arguments:
         lat (float): Latitude component
         lat (float): Longitude component
-        bands (list): List of bands (`B02`, `B03`, `B04`, `B08` and `SCL`)
-        start_date (str): Intial date in search range
-        end_date (str): Final date in search range
-        size (int): Image size in px.
-        geojson_path (str): GeoJSON to crop SR image filepath. If none is provided, it downloads the image in `size`x`size`.
+        start_date (str): Intial date in search range. ISO format (`yyyy-mm-dd`).
+        end_date (str): Final date in search range. ISO format (`yyyy-mm-dd`).
+        bands (list): List of bands Defaults are NIR + RGB + Clouds (`B02`, `B03`, `B04`, `B08` and `SCL`)
+        size (int): Image size in px. Default is `128` and must be a multiple of 32.
+        geojson_path (str): GeoJSON to crop SR image filepath. If `None`, it downloads the full image in `size`x`size` px.
     Returns:
         sr_image_filepath (str): Local filepath to SR image.
     """
@@ -46,7 +47,7 @@ def get_sr_image(lat: float, lon: float, bands: list, start_date: str, end_date:
         # Prepare data
         crs = lonlat_to_utm_epsg(lon, lat)
         cloudless_image_data, sample_date = download_sentinel_cubo(
-            lat, lon, bands, start_date, end_date, size, crs)
+            lat, lon, start_date, end_date, crs, bands, size)
         
         original_s2_reordered, superX_reordered = apply_sen2sr(size, cloudless_image_data)
 
@@ -65,7 +66,7 @@ def get_sr_image(lat: float, lon: float, bands: list, start_date: str, end_date:
         # Get and save cropped sr parcel image
         if geojson_path:
             sr_image_filepath = str(
-                crop_parcel_from_sr_tif(SR_TIF_FILEPATH, geojson_path, sample_date))
+                crop_png_from_tif(SR_TIF_FILEPATH, geojson_path, sample_date))
         else:
             sr_image_filepath = SR_PNG_FILEPATH
         return sr_image_filepath
@@ -79,24 +80,25 @@ def get_sr_image(lat: float, lon: float, bands: list, start_date: str, end_date:
 # --------------------
 
 
-def download_sentinel_cubo(lat: float, lon: float, bands: list, start_date: str, end_date: str, size: int, crs: str, cloud_threshold: float = 0.01, max_retries: int = 3, retry_days_shift: int = 15):
+def download_sentinel_cubo(lat: float, lon: float, start_date: str, end_date: str, crs: str=None, bands: list=["B08", "B02", "B03", "B04", "SCL"], size: int=128, cloud_threshold: float = 0.01, max_retries: int = 3, retry_days_shift: int = 15):
     """
     Download Sentinel's imagery data cubo and uses SCL band to filter the least cloudy data within date range.
     Arguments:
         lat (float): Latitude component
         lat (float): Longitude component
-        bands (list): List of bands (`B02`, `B03`, `B04`, `B08` and `SCL`)
         start_date (str): Intial date in search range
         end_date (str): Final date in search range
-        size (int): Image size in px.
-        crs (str): Coordinate Reference System for the image
-        cloud_threshold (float): Tolerated cloud density percentage
-
+        crs (str): Coordinate Reference System for the image. If `None` it is calculated from `land` and `lon`.
+        bands (list): List of bands Defaults are NIR + RGB + Clouds (`B02`, `B03`, `B04`, `B08` and `SCL`)
+        size (int): Image size in px. Default is `128` and must be a multiple of 32.
+        cloud_threshold (float) : Max percentage of cloud density tolerated (0.0 to 1.0). Default is `0.01`.
+        max_retries (int): Max number of retries if requested image is not found within date range. Shifts `retry_days_shift` back from `start_date` for new date range. Default is `3`.
+        retry_days_shift (int): Number of days to shift back from `start_date`. Default is `15`.
     Returns:
         cloudless_image_data (array): Cloudless image data array
     """
     for attempt in range(max_retries):
-        try:
+        try:            
             logger.info(
                 f"🌍 Attempt {attempt+1}/{max_retries}: {start_date} → {end_date}")
 
@@ -121,6 +123,7 @@ def download_sentinel_cubo(lat: float, lon: float, bands: list, start_date: str,
             # Get acquisition date and reproject
             acq_date = cloudless_image_data["time"].values
             acq_date_str = np.datetime_as_string(acq_date, unit='D')
+            crs = lonlat_to_utm_epsg(lat,lon) if crs is None else crs  # Calculate CRS if not provided
             cloudless_image_data = cloudless_image_data.rio.write_crs(
                 crs).rio.reproject(crs)
 
@@ -181,13 +184,13 @@ def apply_sen2sr(size, cloudless_image_data):
 # --------------------
 
 
-def crop_parcel_from_sr_tif(raster_path: str, geojson_path: str, date: str):
+def crop_png_from_tif(raster_path: str, geojson_path: str, date: str):
     """
     Crops the parcel from the SR image, using the stored parcel's geometry and`rasterio`
     Arguments:
         raster_path (str): Path to uncropped SR image.
         geojson_filepath (str): Path to uncropped SR image.
-        date (str): Path to uncropped SR image.
+        date (str): Image date. For naming the file.
     Returns:
         out_png_path (str): Path to cropped SR parcel image
     """
@@ -242,6 +245,6 @@ if __name__ == "__main__":
     look_from = (datetime.today() - timedelta(days=delta)).strftime("%Y-%m-%d")
 
     start_time = time.time()
-    get_sr_image(lat, lon, BANDS, look_from, now, 150)
+    get_sr_image(lat, lon, look_from, now)
     finish_time = time.time()
     logger.info(f"Total time:\t{(finish_time - start_time)/60:.1f} minutes")
