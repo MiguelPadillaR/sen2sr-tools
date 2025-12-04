@@ -1,4 +1,10 @@
 # SEN2SR Tools
+
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FMiguelPadillaR%2Fsen2sr-tools%2Fmain%2Fpyproject.toml)
+ [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+ ![Status: Active](https://img.shields.io/badge/Status-Active-00aa00.svg)
+![Code style: Ruff](https://img.shields.io/badge/code%20style-autopep8-aa0000.svg)
+
 This repository provides a list of comprehensive tools and utilities for the usage of the [SEN2SR](https://github.com/ESAOpenSR/SEN2SR.git) neural network super-resolution model, developed by the [ESAOpenSR](https://opensr.eu/) team. This model specializes in upscaling Sentinel-2's 10m/px images up to a x4 times improvement of 2.5m/px.
 
 This package implements a feature to crop a polygon directly from the SR image, useful for close-up satellite observation of agricultural states.
