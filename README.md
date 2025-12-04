@@ -65,7 +65,7 @@ It crops the polygon from the given TIF file and returns the cropped image as PN
 from sen2sr_tools.get_sr_image import crop_png_from_tif
 
 raster_path = "path/to/file.tif"
-geojson_path = "path/to/polygon.geojson
+geojson_path = "path/to/polygon.geojson"
 date = "2025-11-1"
 
 out_png_path = crop_png_from_tif(raster_path, geojson_path, date)
